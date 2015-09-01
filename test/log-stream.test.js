@@ -79,15 +79,15 @@ describe('LogStream', function () {
   });
   it('should work with a TransportStream instance', function (done) {
       var logger = new winston.LogStream();
-      var transport = new TransportStream({});
       var expected = {msg: 'foo', level: 'info'};
-
-      transport.log = function (info) {
-        assume(info.msg).equals('foo');
-        assume(info.level).equals('info');
-        assume(info.raw).equals(JSON.stringify({msg: 'foo', level: 'info'}));
-        done();
-      };
+      var transport = new TransportStream({
+        log: function (info) {
+          assume(info.msg).equals('foo');
+          assume(info.level).equals('info');
+          assume(info.raw).equals(JSON.stringify({msg: 'foo', level: 'info'}));
+          done();
+        }
+      });
 
       logger.add(transport);
       logger.log(expected);
@@ -104,62 +104,71 @@ describe('LogStream', function () {
 
     assume(output.stderr).deep.equals(['Unknown logger level: bar\n']);
   });
-  it.skip('should handle default levels correctly', function (done) {
+
+  it('should handle default levels correctly', function (done) {
     var logger = new winston.LogStream();
     var expected = {msg: 'foo', level: 'info'};
 
     function logLevelTransport(level) {
-      var transport = new TransportStream({level: level});
-      transport.log = function (obj) {
-        // XXX Not ideal, but fortunately mocha handles this right
-        // by reporting done() called multiple times.
-        if (level === 'error') {
-          return done('transport on level error should never be called');
+      return new TransportStream({
+        level: level,
+        log: function (obj) {
+          if (level === 'debug') {
+            assume(obj).equals(undefined, 'Transport on level debug should never be called');
+          }
+
+          assume(obj.msg).equals('foo');
+          assume(obj.level).equals('info');
+          assume(obj.raw).equals(JSON.stringify({msg: 'foo', level: 'info'}));
+          done();
         }
-        assume(obj.msg).equals('foo');
-        assume(obj.level).equals('info');
-        assume(obj.raw).equals(JSON.stringify({msg: 'foo', level: 'info'}));
-        done();
-      };
-      return transport;
+      });
     }
 
-    var infoTransport = logLevelTransport('info');
-    var errorTransport = logLevelTransport('error');
 
-    logger.add(infoTransport);
-    logger.add(errorTransport);
+    assume(logger.info).is.a('function');
+    assume(logger.debug).is.a('function');
 
-    logger.log(expected);
+    logger
+      .add(logLevelTransport('info'))
+      .add(logLevelTransport('debug'))
+      .log(expected);
   });
-  it.skip('should handle custom levels correctly', function (done) {
+
+  it('should handle custom levels correctly', function (done) {
     var logger = new winston.LogStream({
       levels: {
-        silly:   0,
-        error:   1
+        missing: 0,
+        bad:     1,
+        test:    2
       }
     });
-    var expected = {msg: 'foo', level: 'silly'};
+
+    var expected = {msg: 'foo', level: 'missing'};
     function logLevelTransport(level) {
-      var transport = new TransportStream({level: level});
-      transport.log = function (obj) {
-        if (level === 'error') {
-          return done('transport on level error should never be called');
+      return new TransportStream({
+        level: level,
+        log: function (obj) {
+          if (level === 'test') {
+            assume(obj).equals(undefined, 'transport on level test should never be called');
+          }
+
+          assume(obj.msg).equals('foo');
+          assume(obj.level).equals('missing');
+          assume(obj.raw).equals(JSON.stringify({msg: 'foo', level: 'missing'}));
+          done();
         }
-        assume(obj.msg).equals('foo');
-        assume(obj.level).equals('silly');
-        assume(obj.raw).equals(JSON.stringify({msg: 'foo', level: 'silly'}));
-        done();
-      };
-      return transport;
+      });
     }
-    var sillyTransport = logLevelTransport('silly');
-    var errorTransport = logLevelTransport('error');
 
-    logger.add(sillyTransport);
-    logger.add(errorTransport);
+    assume(logger.missing).is.a('function');
+    assume(logger.bad).is.a('function');
+    assume(logger.test).is.a('function');
 
-    logger.log(expected);
+    logger
+      .add(logLevelTransport('test'))
+      .add(logLevelTransport('missing'))
+      .log(expected);
   });
 });
 

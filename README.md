@@ -324,6 +324,8 @@ The `exitOnError` option can also be a function to prevent exit on only certain 
 
 ## Logging Levels
 
+Logging levels in `winston` conform to the severity ordering specified by [RFC524](https://tools.ietf.org/html/rfc5424): _severity of all levels is assumed to be numerically **ascending** from most important to least important._
+
 ### Using Logging Levels
 Setting the level for your logging message can be accomplished in one of two ways. You can pass a string representing the logging level to the log() method or use the level specified methods defined on every winston Logger.
 
